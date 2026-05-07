@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CodeCraftHub: Your Learning Management Platform</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f9f9f9;
+    }
+    h1 {
+      color: #8B5CF6;
+      text-align: center;
+    }
+    form {
+      background: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input, textarea, select {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button.add {
+      background: #8B5CF6;
+      color: #fff;
+    }
+    button.edit {
+      background: #F59E0B;
+      color: #fff;
+    }
+    button.delete {
+      background: #EF4444;
+      color: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ddd;
+      text-align: left;
+    }
+    .message {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 4px;
+    }
+    .success { background: #F59E0B; color: #fff; }
+    .error { background: #EF4444; color: #fff; }
+    .loading { text-align: center; color: #8B5CF6; }
+    @media (max-width: 600px) {
+      table, th, td { font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <h1>CodeCraftHub: Your Learning Management Platform</h1>
+
+  <form id="courseForm">
+    <label>Course Name <input type="text" id="name" required></label>
+    <label>Description <textarea id="description" required></textarea></label>
+    <label>Target Completion Date <input type="date" id="target_date" required></label>
+    <label>Status 
+      <select id="status" required>
+        <option value="">Select status</option>
+        <option>Not Started</option>
+        <option>In Progress</option>
+        <option>Completed</option>
+      </select>
+    </label>
+    <button type="submit" class="add">Add Course</button>
+  </form>
+
+  <div id="messages"></div>
+  <div id="loading" class="loading" style="display:none;">Loading...</div>
+
+  <table id="coursesTable">
+    <thead>
+      <tr>
+        <th>ID</th><th>Name</th><th>Description</th><th>Target Date</th><th>Status</th><th>Created At</th><th>Actions</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const API_URL = "http://localhost:5000/api/courses";
+    const tableBody = document.querySelector("#coursesTable tbody");
+    const messages = document.getElementById("messages");
+    const loading = document.getElementById("loading");
+
+    function showMessage(text, type="success") {
+      messages.innerHTML = `<div class="message ${type}">${text}</div>`;
+      setTimeout(() => messages.innerHTML = "", 3000);
+    }
+
+    function setLoading(state) {
+      loading.style.display = state ? "block" : "none";
+    }
+
+    async function fetchCourses() {
+      setLoading(true);
+      try {
+        const res = await fetch(API_URL);
+        const data = await res.json();
+        renderCourses(data);
+      } catch (err) {
+        showMessage("Error fetching courses", "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    function renderCourses(courses) {
+      tableBody.innerHTML = "";
+      courses.forEach(course => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${course.id}</td>
+          <td contenteditable="true" data-field="name">${course.name}</td>
+          <td contenteditable="true" data-field="description">${course.description}</td>
+          <td contenteditable="true" data-field="target_date">${course.target_date}</td>
+          <td contenteditable="true" data-field="status">${course.status}</td>
+          <td>${course.created_at}</td>
+          <td>
+            <button class="edit" onclick="updateCourse(${course.id}, this)">Save</button>
+            <button class="delete" onclick="deleteCourse(${course.id})">Remove</button>
+          </td>
+        `;
+        tableBody.appendChild(row);
+      });
+    }
+
+    document.getElementById("courseForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name = document.getElementById("name").value.trim();
+      const description = document.getElementById("description").value.trim();
+      const target_date = document.getElementById("target_date").value;
+      const status = document.getElementById("status").value;
+
+      if (!name || !description || !target_date || !status) {
+        showMessage("All fields are required", "error");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, description, target_date, status })
+        });
+        if (!res.ok) throw new Error("Failed to add course");
+        await fetchCourses();
+        showMessage("Course added successfully");
+        e.target.reset();
+      } catch (err) {
+        showMessage(err.message, "error");
+      } finally {
+        setLoading(false);
+      }
+    });
+
+    async function updateCourse(id, btn) {
+      const row = btn.closest("tr");
+      const updated = {};
+      row.querySelectorAll("[contenteditable]").forEach(cell => {
+        updated[cell.dataset.field] = cell.innerText.trim();
+      });
+
+      if (!["Not Started","In Progress","Completed"].includes(updated.status)) {
+        showMessage("Invalid status value", "error");
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(updated)
+        });
+        if (!res.ok) throw new Error("Failed to update course");
+        await fetchCourses();
+        showMessage("Course updated successfully");
+      } catch (err) {
+        showMessage(err.message, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function deleteCourse(id) {
+      if (!confirm("Are you sure you want to delete this course?")) return;
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to delete course");
+        await fetchCourses();
+        showMessage("Course deleted successfully");
+      } catch (err) {
+        showMessage(err.message, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    // Initial load
+    fetchCourses();
+  </script>
+</body>
+</html>
