@@ -32,5 +32,5 @@ Follow these steps to set up CodeCraftHub:
 
 1. **Clone or download the project**
    ```bash
-   git clone https://github.com/yourusername/codecrafthub.git
+   git clone https://github.com/mamchristian310-commits/codecrafthub.git
    cd codecrafthub
