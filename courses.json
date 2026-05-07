@@ -1,0 +1,10 @@
+[
+    {
+        "id": 1,
+        "name": "Flask Basics",
+        "description": "Learn Flask REST APIs",
+        "target_date": "2026-06-01",
+        "status": "Not Started",
+        "created_at": "2026-05-07 21:15:34"
+    }
+]
